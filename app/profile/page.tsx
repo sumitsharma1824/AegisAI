@@ -43,12 +43,14 @@ export default function ProfilePage() {
     const [uid, setUid] = useState<string | null>(null);
     const [profilePic, setProfilePic] = useState("");
     const [loadingAuth, setLoadingAuth] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
 
     const {
         register,
         handleSubmit,
         setValue,
         watch,
+        reset,
         formState: { isSubmitting, errors },
     } = useForm<FormData>({
         resolver: zodResolver(schema),
@@ -58,16 +60,43 @@ export default function ProfilePage() {
 
     useEffect(() => {
         const auth = getAuth(app);
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (!user) {
                 router.push("/authpage");
             } else {
                 setUid(user.uid);
+                
+                try {
+                    const res = await fetch("/api/auth/me", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ uid: user.uid }),
+                    });
+                    
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.user && data.user.isProfileComplete) {
+                            setIsEditing(true);
+                            reset({
+                                name: data.user.name || "",
+                                age: data.user.age || "",
+                                gender: data.user.gender || undefined,
+                                maritalStatus: data.user.maritalStatus || undefined,
+                                secretKey: data.user.secretKey || "",
+                            });
+                            if (data.user.profilePicUrl) {
+                                setProfilePic(data.user.profilePicUrl);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error("Failed to load existing profile:", error);
+                }
             }
             setLoadingAuth(false);
         });
         return () => unsubscribe();
-    }, [router]);
+    }, [router, reset]);
 
     const generateSecretKey = () => {
         const key = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
@@ -107,9 +136,13 @@ export default function ProfilePage() {
             <div className="max-w-2xl mx-auto">
                 <Card className="shadow-lg border-zinc-200/60">
                     <CardHeader className="text-center pb-8 border-b border-zinc-100">
-                        <CardTitle className="text-3xl font-bold text-zinc-900">Complete Your Profile</CardTitle>
+                        <CardTitle className="text-3xl font-bold text-zinc-900">
+                            {isEditing ? "Edit Your Profile" : "Complete Your Profile"}
+                        </CardTitle>
                         <CardDescription className="text-zinc-500 mt-2">
-                            Please provide your details to set up your account on AegisAI.
+                            {isEditing 
+                                ? "Update your details below." 
+                                : "Please provide your details to set up your account on AegisAI."}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-8">
@@ -202,7 +235,7 @@ export default function ProfilePage() {
                                 className="w-full mt-8 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold py-6 rounded-xl transition-all"
                                 disabled={isSubmitting}
                             >
-                                {isSubmitting ? "Saving..." : "Save Profile & Continue"}
+                                {isSubmitting ? "Saving..." : isEditing ? "Update Profile" : "Save Profile & Continue"}
                             </Button>
                         </form>
                     </CardContent>
