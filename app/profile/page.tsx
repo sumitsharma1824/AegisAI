@@ -44,6 +44,7 @@ export default function ProfilePage() {
     const [loadingAuth, setLoadingAuth] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [enableSecretKey, setEnableSecretKey] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,6 +125,9 @@ export default function ProfilePage() {
                             });
                             if (data.user.profilePicUrl) {
                                 setProfilePic(data.user.profilePicUrl);
+                            }
+                            if (data.user.secretKey) {
+                                setEnableSecretKey(true);
                             }
                         }
                     }
@@ -255,18 +259,36 @@ export default function ProfilePage() {
                             </div>
 
                             <div className="pt-4 border-t border-zinc-100">
-                                <Label className="text-base font-semibold mb-1 block">Secret Key (Optional)</Label>
-                                <p className="text-sm text-zinc-500 mb-4">Required for accessing the dashboard.</p>
-                                
-                                <div className="flex gap-2">
-                                    <Input placeholder="Enter or generate secret key" {...register("secretKey")} className="font-mono bg-zinc-50" />
-                                    <Button type="button" variant="outline" onClick={generateSecretKey}>
-                                        Generate
-                                    </Button>
-                                    <Button type="button" variant="secondary" onClick={copyToClipboard}>
-                                        Copy
-                                    </Button>
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <Label className="text-base font-semibold mb-1 block">Secret Key Security</Label>
+                                        <p className="text-sm text-zinc-500">Enable an extra layer of security for accessing the dashboard.</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            className="sr-only peer" 
+                                            checked={enableSecretKey}
+                                            onChange={(e) => {
+                                                setEnableSecretKey(e.target.checked);
+                                                if (!e.target.checked) setValue("secretKey", "");
+                                            }}
+                                        />
+                                        <div className="w-11 h-6 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-zinc-900"></div>
+                                    </label>
                                 </div>
+                                
+                                {enableSecretKey && (
+                                    <div className="flex gap-2 animate-in fade-in slide-in-from-top-2">
+                                        <Input placeholder="Enter or generate secret key" {...register("secretKey")} className="font-mono bg-zinc-50" />
+                                        <Button type="button" variant="outline" onClick={generateSecretKey}>
+                                            Generate
+                                        </Button>
+                                        <Button type="button" variant="secondary" onClick={copyToClipboard}>
+                                            Copy
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
 
                             <Button 
