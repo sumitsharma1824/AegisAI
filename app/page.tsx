@@ -500,6 +500,15 @@ export default function Home() {
             const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
             const heights = [60, 35, 75, 50, 80, 45, 90];
             const emojis = ["😐", "😰", "😊", "😔", "😊", "😰", "😊"];
+            const barColors = [
+              "from-zinc-500 to-zinc-400",     // Neutral
+              "from-violet-500 to-violet-400", // Anxious
+              "from-[#B21563] to-[#911050]",   // Happy
+              "from-blue-500 to-blue-400",     // Sad
+              "from-[#B21563] to-[#911050]",   // Happy
+              "from-violet-500 to-violet-400", // Anxious
+              "from-[#B21563] to-[#911050]",   // Happy
+            ];
             return (
               <div
                 ref={ref}
@@ -511,7 +520,7 @@ export default function Home() {
                     <div key={day} className="flex flex-col items-center justify-end gap-2 flex-1 h-full">
                       <span className="text-lg">{emojis[i]}</span>
                       <div
-                        className="w-full max-w-[48px] rounded-t-lg bg-gradient-to-t from-[#B21563] to-[#911050] transition-all duration-1000"
+                        className={`w-full max-w-[48px] rounded-t-lg bg-gradient-to-t ${barColors[i]} transition-all duration-1000`}
                         style={{ height: visible ? `${heights[i]}%` : "0%", transitionDelay: `${i * 80}ms` }}
                       />
                       <span className="text-xs text-zinc-500">{day}</span>
