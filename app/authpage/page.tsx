@@ -55,14 +55,14 @@ function AuthContent() {
 
   if (checkingLink) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-zinc-50">
+      <div className="flex h-screen w-full items-center justify-center bg-zinc-50 dark:bg-[#09090b]">
         <p className="text-zinc-500 animate-pulse">Completing sign in...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-zinc-50 p-4">
+    <div className="flex h-screen w-full items-center justify-center bg-zinc-50 dark:bg-[#09090b] p-4">
       <div className="w-full max-w-md">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
