@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import { Plus, Search, PanelLeft, Paperclip, ArrowUp, Zap, Heart, CheckCircle, Clock, Users, Shield, MessageSquare, Bot } from "lucide-react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Plus, Search, PanelLeft, Paperclip, ArrowUp, Zap, Heart, CheckCircle, Clock, Users, Shield, MessageSquare, Bot, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -10,6 +10,13 @@ interface Message {
   message: string;
   timestamp: Date;
   isError?: boolean;
+}
+
+interface ChatSession {
+  id: string;
+  title: string;
+  messages: Message[];
+  isLoaded: boolean; // Whether full messages have been fetched from DB
 }
 
 interface UserRecord {
@@ -25,20 +32,154 @@ interface ChatbotSectionProps {
   uid: string;
 }
 
+// --- Mood Constants ---
+const MOOD_EMOJIS = [
+  { emoji: "😄", label: "Great", weight: 0 },
+  { emoji: "🙂", label: "Good", weight: 1 },
+  { emoji: "😐", label: "Okay", weight: 2 },
+  { emoji: "😕", label: "Not great", weight: 3 },
+  { emoji: "😢", label: "Sad", weight: 4 },
+  { emoji: "😭", label: "Terrible", weight: 5 },
+];
+
+// --- AI Emotion → Emoji Mapper ---
+const EMOTION_TO_EMOJI: Record<string, string> = {
+  joy: "😄", happiness: "😄", excited: "😄", grateful: "😄", love: "😄",
+  calm: "🙂", content: "🙂", hopeful: "🙂", relief: "🙂", positive: "🙂",
+  neutral: "😐", bored: "😐", confused: "😐", uncertain: "😐",
+  anxiety: "😕", worry: "😕", frustrated: "😕", stressed: "😕", nervous: "😕",
+  sadness: "😢", lonely: "😢", disappointed: "😢", hurt: "😢", guilt: "😢",
+  fear: "😭", anger: "😭", despair: "😭", helpless: "😭", terror: "😭", panic: "😭",
+};
+
+function mapEmotionToEmoji(emotion: string): string {
+  const key = emotion.toLowerCase().trim();
+  return EMOTION_TO_EMOJI[key] || "😐";
+}
+
 export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [chatSessions, setChatSessions] = useState<{id: string, title: string, messages: Message[]}[]>([
-    { id: '1', title: 'Initial System Consultation', messages: [] }
-  ]);
-  const [activeChatId, setActiveChatId] = useState('1');
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // --- Mood State ---
+  const [showMoodModal, setShowMoodModal] = useState(false);
+  const [moodModalDismissed, setMoodModalDismissed] = useState(false);
+  const [selectedMoodAnimation, setSelectedMoodAnimation] = useState<string | null>(null);
+
   const activeChat = chatSessions.find(c => c.id === activeChatId);
   const messages = activeChat?.messages || [];
+
+  // --- Create a fresh new chat session ---
+  const createNewChat = useCallback(() => {
+    const newId = Date.now().toString();
+    const newSession: ChatSession = { id: newId, title: "New Chat", messages: [], isLoaded: true };
+    setChatSessions(prev => [newSession, ...prev]);
+    setActiveChatId(newId);
+    return newId;
+  }, []);
+
+  // --- Fetch all chat session headers from DB on mount ---
+  useEffect(() => {
+    if (!uid) return;
+
+    const fetchSessions = async () => {
+      try {
+        const res = await fetch(`/api/chat?uid=${uid}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.sessions && data.sessions.length > 0) {
+            const loadedSessions: ChatSession[] = data.sessions.map((s: any) => ({
+              id: s.chatId,
+              title: s.title || "Untitled Chat",
+              messages: [],
+              isLoaded: false, // Messages not yet fetched
+            }));
+            setChatSessions(loadedSessions);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch chat sessions:", err);
+      }
+
+      // Always start with a fresh new chat regardless of history
+      const newId = Date.now().toString();
+      setChatSessions(prev => [
+        { id: newId, title: "New Chat", messages: [], isLoaded: true },
+        ...prev
+      ]);
+      setActiveChatId(newId);
+    };
+
+    fetchSessions();
+  }, [uid]);
+
+  // --- Fetch messages for a specific session when it becomes active ---
+  useEffect(() => {
+    if (!uid || !activeChatId) return;
+
+    const session = chatSessions.find(s => s.id === activeChatId);
+    if (!session || session.isLoaded) return;
+
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch(`/api/chat?uid=${uid}&chatId=${activeChatId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const mapped: Message[] = (data.messages || []).map((m: any) => ({
+            sender: m.sender,
+            message: m.message,
+            timestamp: new Date(m.timestamp),
+          }));
+          
+          setChatSessions(prev => prev.map(s =>
+            s.id === activeChatId 
+              ? { ...s, messages: mapped, isLoaded: true, title: data.title || s.title }
+              : s
+          ));
+        }
+      } catch (err) {
+        console.error("Failed to fetch chat messages:", err);
+      }
+    };
+
+    fetchMessages();
+  }, [uid, activeChatId, chatSessions]);
+
+  // --- Show mood modal on first load ---
+  useEffect(() => {
+    if (!moodModalDismissed && uid) {
+      setShowMoodModal(true);
+    }
+  }, [uid, moodModalDismissed]);
+
+  // --- Record a mood event ---
+  const recordMood = useCallback(async (emoji: string, source: "manual" | "ai") => {
+    try {
+      await fetch("/api/mood", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, emoji, source }),
+      });
+    } catch (err) {
+      console.error("Failed to save mood:", err);
+    }
+  }, [uid]);
+
+  const handleMoodSelect = (emoji: string) => {
+    setSelectedMoodAnimation(emoji);
+    recordMood(emoji, "manual");
+    setTimeout(() => {
+      setShowMoodModal(false);
+      setMoodModalDismissed(true);
+      setSelectedMoodAnimation(null);
+    }, 600);
+  };
 
   const handleAttachmentClick = () => {
     fileInputRef.current?.click();
@@ -52,9 +193,7 @@ export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps)
   };
 
   const handleNewChat = () => {
-    const newId = Date.now().toString();
-    setChatSessions([{ id: newId, title: 'New Chat', messages: [] }, ...chatSessions]);
-    setActiveChatId(newId);
+    createNewChat();
     setSearchQuery("");
     if (!sidebarOpen) setSidebarOpen(true);
   };
@@ -68,16 +207,19 @@ export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps)
     { text: "Would you like to discuss your next steps or options?", icon: <Heart className="w-4 h-4 text-rose-500" /> },
   ];
 
-  const saveMessageToDb = async (msg: Message) => {
+  // --- Save a single message to the DB for the active chat session ---
+  const saveMessageToDb = async (msg: Message, title?: string) => {
     try {
       await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           uid,
+          chatId: activeChatId,
           message: msg.message,
           sender: msg.sender,
-          timestamp: msg.timestamp
+          timestamp: msg.timestamp,
+          ...(title ? { title } : {}),
         }),
       });
     } catch (err) {
@@ -89,15 +231,19 @@ export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps)
     if (!text.trim()) return;
 
     const userMsg: Message = { sender: "user", message: text, timestamp: new Date() };
-    
-    // Save to DB (Fire and forget)
-    saveMessageToDb(userMsg);
+  
+    // Determine if this is the first message (set the chat title)
+    const isFirstMessage = messages.length === 0;
+    const newTitle = isFirstMessage ? text.slice(0, 30) + (text.length > 30 ? "..." : "") : undefined;
+
+    // Save to DB with title if first message
+    saveMessageToDb(userMsg, newTitle);
     
     setChatSessions((prev) => prev.map(chat => {
       if (chat.id === activeChatId) {
         return { 
           ...chat, 
-          title: chat.title === "New Chat" ? text.slice(0, 25) + "..." : chat.title,
+          title: newTitle || chat.title,
           messages: [...chat.messages, userMsg] 
         };
       }
@@ -108,14 +254,12 @@ export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps)
     setIsTyping(true);
 
     try {
-      // Construct user_info from profile data
       const userInfoParts = [];
       if (userRecord.age) userInfoParts.push(`Age: ${userRecord.age}`);
       if (userRecord.gender) userInfoParts.push(`Gender: ${userRecord.gender}`);
       if (userRecord.maritalStatus) userInfoParts.push(`Marital Status: ${userRecord.maritalStatus}`);
       const userInfoStr = userInfoParts.join(", ") || "No additional profile info provided.";
 
-      // Map local history to API format, strictly filtering out any technical errors
       const history = messages
         .filter(msg => !msg.isError)
         .map(msg => ({
@@ -149,14 +293,13 @@ export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps)
         timestamp: new Date() 
       };
 
-      // Save bot response to DB
       saveMessageToDb(botMsg);
 
       setChatSessions((prev) => prev.map(chat => 
         chat.id === activeChatId ? { ...chat, messages: [...chat.messages, botMsg] } : chat
       ));
 
-      // Save Analysis results to Summary model
+      // Save Analysis results
       if (data.stress_score !== undefined) {
         fetch("/api/chat/analysis", {
           method: "POST",
@@ -170,7 +313,14 @@ export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps)
         }).catch(err => console.error("Failed to save analysis:", err));
       }
 
-      // Optional: Handle stress_score or emotions here if needed for parent state
+      // AI Emotion → Mood Tracking
+      if (data.emotions && Array.isArray(data.emotions) && data.emotions.length > 0) {
+        for (const emotion of data.emotions) {
+          const mappedEmoji = mapEmotionToEmoji(emotion);
+          recordMood(mappedEmoji, "ai");
+        }
+      }
+
       console.log("Chat Analysis:", { 
         emotions: data.emotions, 
         stress_score: data.stress_score, 
@@ -181,15 +331,11 @@ export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps)
       console.error("Chatbot Error:", error);
       
       let rescuedMessage = "I encountered an error connecting to my safety service. Please try again soon.";
-      
       const errorStr = error.toString();
 
-      // Handle rate limiting errors with a friendly message
       if (errorStr.includes("RESOURCE_EXHAUSTED") || errorStr.includes("429")) {
         rescuedMessage = "⏳ The AI service has reached its daily request limit. Please try again later or ask your admin to upgrade the API plan.";
-      }
-      // Attempt to "rescue" the AI response if the backend failed to parse it
-      else if (errorStr.includes("AI returned malformed JSON") && errorStr.includes("model response:")) {
+      } else if (errorStr.includes("AI returned malformed JSON") && errorStr.includes("model response:")) {
         const parts = errorStr.split("model response:");
         if (parts.length > 1) {
           rescuedMessage = parts[1].trim()
@@ -217,37 +363,6 @@ export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps)
   };
 
   useEffect(() => {
-    const fetchHistory = async () => {
-      if (!uid) return;
-      try {
-        const res = await fetch(`/api/chat?uid=${uid}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.messages && data.messages.length > 0) {
-            // Map MongoDB messages to internal Message format
-            const mappedMessages: Message[] = data.messages.map((m: any) => ({
-              sender: m.sender,
-              message: m.message,
-              timestamp: new Date(m.timestamp)
-            }));
-            
-            setChatSessions([{ 
-              id: '1', 
-              title: 'Saved History', 
-              messages: mappedMessages 
-            }]);
-            setActiveChatId('1');
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch chat history:", err);
-      }
-    };
-    
-    fetchHistory();
-  }, [uid]);
-
-  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
@@ -256,6 +371,57 @@ export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps)
   return (
     <div className="flex h-[calc(100vh-120px)] w-full rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121212] shadow-sm">
       
+      {/* ====== MOOD CHECK-IN MODAL ====== */}
+      {showMoodModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 p-8 max-w-md w-full mx-4 animate-in zoom-in-95 duration-300">
+            <button 
+              onClick={() => { setShowMoodModal(false); setMoodModalDismissed(true); }}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#B21563] to-[#E91E8C] flex items-center justify-center shadow-lg shadow-[#B21563]/20">
+                <Heart className="w-7 h-7 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                How is your day going?
+              </h2>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                Select how you&apos;re feeling right now
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              {MOOD_EMOJIS.map(({ emoji, label }) => (
+                <button
+                  key={emoji}
+                  onClick={() => handleMoodSelect(emoji)}
+                  className={`group relative flex flex-col items-center gap-2 py-4 px-3 rounded-xl border transition-all duration-200
+                    ${selectedMoodAnimation === emoji 
+                      ? "bg-[#B21563]/10 dark:bg-[#B21563]/20 border-[#B21563] scale-110 shadow-lg shadow-[#B21563]/20" 
+                      : "border-zinc-200 dark:border-zinc-700 hover:border-[#B21563]/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:scale-105 active:scale-95"
+                    }`}
+                >
+                  <span className={`text-3xl transition-transform duration-200 ${selectedMoodAnimation === emoji ? "animate-bounce" : "group-hover:scale-110"}`}>
+                    {emoji}
+                  </span>
+                  <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                    {label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <p className="text-center text-xs text-zinc-400 mt-5">
+              Your response helps us understand your wellbeing better
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar */}
       <div className={`${sidebarOpen ? "w-64" : "w-16"} flex-shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#0a0a0a] flex flex-col transition-all duration-300 overflow-hidden`}>
         <div className={`p-4 flex items-center ${sidebarOpen ? "justify-between" : "justify-center"}`}>
@@ -337,7 +503,6 @@ export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps)
         </div>
 
         {messages.length === 0 ? (
-          // Empty State
           <div className="flex-1 flex flex-col items-center justify-center p-6 mt-12">
             <h1 className="text-4xl font-bold text-zinc-900 dark:text-white mb-8 tracking-tight">Good afternoon</h1>
             
@@ -379,7 +544,6 @@ export default function ChatbotSection({ userRecord, uid }: ChatbotSectionProps)
             </div>
           </div>
         ) : (
-          // Chat Thread
           <>
             <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 space-y-6 pt-16">
               {messages.map((msg, i) => (

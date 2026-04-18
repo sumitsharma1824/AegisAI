@@ -5,7 +5,17 @@ const chatSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
-    unique: true
+  },
+
+  chatId: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+
+  title: {
+    type: String,
+    default: "New Chat",
   },
 
   messages: [
@@ -38,6 +48,9 @@ const chatSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Compound index for fast lookups: all chats for a user, sorted by latest
+chatSchema.index({ userId: 1, updatedAt: -1 });
 
 const Chat = mongoose.models.Chat || mongoose.model("Chat", chatSchema);
 export default Chat;
