@@ -52,7 +52,15 @@ export default function DashboardPage() {
                     body: JSON.stringify({ uid: user.uid }),
                 });
 
-                if (!res.ok) throw new Error("Failed to fetch user");
+                if (!res.ok) {
+                    const errText = await res.text();
+                    try {
+                        const errData = JSON.parse(errText);
+                        throw new Error(`Failed to fetch user: ${errData.error || errText}`);
+                    } catch {
+                        throw new Error(`Failed to fetch user: ${errText}`);
+                    }
+                }
                 
                 const data = await res.json();
                 
