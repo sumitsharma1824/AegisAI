@@ -407,14 +407,26 @@ if (!res.ok) throw new Error(result.error || "Failed to save profile");
   />
 </div>
 
-                            <Button 
-                                type="button"
-                                onClick={handleSubmit(onSubmit)}
-                                className="w-full mt-8 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold py-6 rounded-xl transition-all"
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting ? "Saving..." : isEditing ? "Update Profile" : "Save Profile & Continue"}
-                            </Button>
+                            <div className="flex gap-4 mt-8">
+                                {isEditing && (
+                                    <Button 
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => router.push("/dashboard")}
+                                        className="flex-1 py-6 rounded-xl font-semibold border-zinc-200"
+                                    >
+                                        Cancel
+                                    </Button>
+                                )}
+                                <Button 
+                                    type="button"
+                                    onClick={handleSubmit(onSubmit)}
+                                    className={`${isEditing ? "flex-1" : "w-full"} bg-zinc-900 hover:bg-zinc-800 text-white font-semibold py-6 rounded-xl transition-all`}
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? "Saving..." : isEditing ? "Update Profile" : "Save Profile & Continue"}
+                                </Button>
+                            </div>
                         </form>
                     </CardContent>
                 </Card>
