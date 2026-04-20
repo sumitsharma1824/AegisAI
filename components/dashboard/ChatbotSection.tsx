@@ -136,7 +136,7 @@ function MessageInput({ inputValue, setInputValue, onSend, isListening, toggleVo
               disabled={!inputValue.trim()}
               className={`p-2.5 rounded-xl transition-all ${
                 inputValue.trim() 
-                  ? "bg-zinc-500 text-white shadow-md active:scale-90" 
+                  ? "bg-[#B21563] text-white shadow-md active:scale-90" 
                   : "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600"
               }`}
             >
