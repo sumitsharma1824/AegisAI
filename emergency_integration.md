@@ -29,8 +29,16 @@ const latestDate = Object.keys(Object.fromEntries(summaryMap)).sort().reverse()[
 const latestSummary = summaryMap.get(latestDate);
 ```
 
-### 2. From the Frontend
-The summary is available in the `userRecord` object if you are inside a component that receives it (like the Dashboard).
+## Background Summary Generation (12:00 AM)
+We use a native **TypeScript Background Worker** to ensure summaries are ready every morning:
+
+- **Technology**: Built using `node-cron` and integrated via Next.js `instrumentation.ts`.
+- **Logic**: At 12:00 AM UTC daily, the server automatically iterates through all users who had chat activity the previous day.
+- **Goal**: It calls the `/daily-summary` AI service to generate a final, semantic "Daily Wrap-up" for that day and saves it to the database.
+- **Reliability**: This ensures that even if a user closes their browser mid-conversation, the record in `summaryMap` is completed by midnight for the emergency system to use.
+
+### Manual Trigger (Optional)
+If you need to force a summary update for a user without waiting for midnight, the frontend still triggers an incremental update to `/api/chat/analysis` after every single message.
 
 ## Formatting for SMS
 When sending an emergency SMS, you can format the data like this:
