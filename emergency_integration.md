@@ -1,15 +1,19 @@
-# Emergency Integration Guide: Cumulative Summary System
+## How Summaries are Calculated
+The summary system follows a **Cumulative Delegation** model:
 
-This document explains how to fetch and use the cumulative emotional wellbeing summary for the emergency SMS system.
+1.  **Context Collection**: Every time a user sends a message, our backend fetches the existing `summaryMap` (previous days' summaries) and the latest chat exchange.
+2.  **External AI Processing**: This data is sent to the specialized `/daily-summary` endpoint. The AI uses the `old_summary` context to understand the user's history and creates an updated, semantically linked summary for the current day.
+3.  **Timestamping**: New additions within the backend are prefixed with the local HH:mm timestamp before inclusion in the cumulative map.
+4.  **Mathematical Aggregation**: `avgStress` is calculated as a **running average** across all recorded analysis events, ensuring that the final score reflects the user's total wellbeing trajectory rather than just a single moment.
 
-## Data Source
-The summary data is stored in the `User` model in MongoDB and is updated after every chat message.
+## Database Storage (User Model)
+We store the following enriched metrics in the `User` document:
 
-### MongoDB Schema Fields (User Model)
-- `summaryMap`: A Map (Object) where keys are dates (`YYYY-MM-DD`) and values are the summaries for that day.
-- `dominantEmotion`: The user's most frequent emotional state.
-- `avgStress`: Current average stress score (0-100).
-- `riskTrend`: The trajectory of the user's stress (e.g., "Increasing", "Stable").
+-   `summaryMap` (Map): Key-Value pairs of `{ "YYYY-MM-DD": "Summary text..." }`. This builds up indefinitely.
+-   `dominantEmotion` (String): The primary emotion detected across recent interactions (e.g., "Anxious", "Neutral").
+-   `avgStress` (Number): A 0-100 float representing the average stress risk detected life-to-date.
+-   `riskTrend` (String): The direction of the user's mental health risk (e.g., "Increasing", "Decreasing").
+-   `totalAnalysisCount` (Number): Used for calculating the weighted average stress score.
 
 ## How to Fetch the Data
 
