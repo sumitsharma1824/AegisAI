@@ -50,8 +50,6 @@ export default function DashboardPage() {
     window.addEventListener("beforeunload", handleUnload);
     return () => {
       window.removeEventListener("beforeunload", handleUnload);
-      // ⚠️ DO NOT clear sessionStorage here
-      // Clearing on unmount causes redirect loop
     };
   }, []);
 
@@ -119,6 +117,7 @@ export default function DashboardPage() {
     router.push("/authpage");
   };
 
+  // ── Loading State ──
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center font-medium">

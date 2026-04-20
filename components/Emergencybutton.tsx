@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 
 export default function EmergencyButton() {
@@ -10,6 +10,12 @@ export default function EmergencyButton() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [timerId, setTimerId] = useState<NodeJS.Timeout | null>(null);
   const [mode, setMode] = useState<"default" | "ai" | null>(null);
+
+  useEffect(() => {
+    const handleTrigger = () => setOpen(true);
+    window.addEventListener("aegis-trigger-emergency", handleTrigger);
+    return () => window.removeEventListener("aegis-trigger-emergency", handleTrigger);
+  }, []);
 
   // 🔁 Sequential fallback
   const sendSequentialSMS = async (contacts: string[], message: string) => {
