@@ -80,7 +80,7 @@ export async function POST(req: Request) {
   try {
     await mongoose.connect(process.env.MONGODB_URI!);
 
-    const { action, location, uid } = await req.json();
+    const { action, location, uid, useAI } = await req.json();
 
     const user = await User.findOne({ uid });
 
@@ -99,12 +99,9 @@ export async function POST(req: Request) {
       });
     }
 
-    // 📩 SMS (NO sending here)
+    // 📩 SMS
     if (action === "sms") {
       const contacts = user.trustedContacts || [];
-      const message =
-        user.emergencyMessage ||
-        "I may need help. Please check on me.";
 
       if (contacts.length === 0) {
         return NextResponse.json(
@@ -113,12 +110,51 @@ export async function POST(req: Request) {
         );
       }
 
-      const finalMessage = `
+      let finalMessage = "";
+
+      // 🔴 DEFAULT MESSAGE
+      if (!useAI) {
+        const message =
+          user.emergencyMessage ||
+          "I may need help. Please check on me.";
+
+        finalMessage = `
 ${message}
 
 📍 Location:
 ${location}
-      `;
+        `.trim();
+      }
+
+      // 🤖 AI MESSAGE
+
+else {
+  let latestSummary: string = "No recent activity";
+
+  if (user.summaryMap && user.summaryMap.size > 0) {
+    const entries = Array.from(user.summaryMap.entries());
+    entries.sort((a, b) => b[0].localeCompare(a[0]));
+    latestSummary = entries[0][1];
+  }
+
+  if (typeof latestSummary !== "string") {
+    latestSummary = String(latestSummary);
+  }
+
+  finalMessage = `
+🚨 AEGIS ALERT
+
+${user.name} may need attention.
+
+🧠 Mood: ${user.dominantEmotion || "Unknown"}
+⚠️ Stress: ${Math.round(user.avgStress || 0)}%
+
+📝 ${latestSummary}
+
+📍 Location:
+${location}
+  `.trim();
+}
 
       return NextResponse.json({
         success: true,
@@ -133,10 +169,10 @@ ${location}
     );
 
   } catch (err: any) {
-    console.error(err);
+    console.error("EMERGENCY ERROR:", err);
     return NextResponse.json(
       { error: err.message },
       { status: 500 }
     );
   }
-}
+} 

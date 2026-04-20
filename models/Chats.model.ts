@@ -57,8 +57,6 @@ if (mongoose.models.Chat) {
   delete mongoose.models.Chat;
 }
 const Chat = mongoose.model("Chat", chatSchema);
-
 // Drop stale indexes from old schema (e.g., unique userId) and sync with current schema
 Chat.syncIndexes().catch((err: any) => console.warn("Chat syncIndexes:", err.message));
-
 export default Chat;
