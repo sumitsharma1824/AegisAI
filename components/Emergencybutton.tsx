@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 
-export default function EmergencyButton() {
+export default function EmergencyButton({ activeTab }: { activeTab?: string }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -169,26 +169,22 @@ export default function EmergencyButton() {
 
   return (
     <>
-      {/* Floating Button — TOP RIGHT, above chat input */}
-      
-<div className="fixed right-4 top-[80%] z-40">
+      {/* Floating Button — BOTTOM RIGHT (Conditionally hidden on mobile in Chatbot view) */}
+      <div className={`fixed right-6 bottom-6 z-40 ${activeTab === "chatbot" ? "hidden md:flex" : "flex"}`}>
         <button
           className="
-            px-4 py-2.5
-            rounded-full
-            bg-gradient-to-r from-red-500 to-pink-500
-            hover:from-red-600 hover:to-pink-600
+            px-5 py-2.5
+            rounded-xl
+            bg-[#B21563]
+            hover:bg-[#911050]
             text-white
             text-sm
-            font-semibold
-            shadow-lg shadow-red-500/30
-            hover:shadow-red-500/50
+            font-bold
+            shadow-md
             transition-all
             duration-200
             hover:scale-105
             active:scale-95
-            animate-pulse
-            hover:animate-none
           "
           onClick={() => setOpen(true)}
         >

@@ -119,7 +119,7 @@ function MessageInput({ inputValue, setInputValue, onSend, isListening, toggleVo
         <div className="flex justify-between items-center mt-1 pt-1">
           <button
             onClick={triggerEmergency}
-            className="text-[#B21563] font-medium text-lg hover:opacity-80 active:scale-95 transition-all"
+            className="bg-[#B21563] text-white px-5 py-2 rounded-xl font-bold text-sm hover:bg-[#911050] active:scale-95 transition-all shadow-md"
           >
             Need Help?
           </button>
