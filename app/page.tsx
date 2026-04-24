@@ -167,6 +167,7 @@ export default function Home() {
   const statsReveal = useReveal(0.2);
   const missionReveal = useReveal(0.2);
   const ctaReveal = useReveal(0.2);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   // ── Auto-login check ──
   useEffect(() => {
@@ -183,11 +184,12 @@ export default function Home() {
           if (res.ok) {
             const data = await res.json();
             if (data.user && data.user.isProfileComplete) {
-              // Priority: Stealth mode (Notepad) if they have a secret key
               if (data.user.secretKey) {
                 router.push("/notepad");
+                return; // Stay in loading state while redirecting
               } else {
                 router.push("/dashboard");
+                return; // Stay in loading state while redirecting
               }
             }
           }
@@ -195,9 +197,15 @@ export default function Home() {
           console.error("Auto-redirect failed:", error);
         }
       }
+      // If no user or redirect didn't happen, show landing page
+      setCheckingAuth(false);
     });
     return () => unsubscribe();
   }, [router]);
+
+  if (checkingAuth) {
+    return <div className="h-screen bg-white" />; // Clean white screen while checking
+  }
 
   return (
     <main className="min-h-screen bg-white text-zinc-900 font-sans overflow-x-hidden">
