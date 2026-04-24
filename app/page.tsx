@@ -357,10 +357,16 @@ function HeroSection({ mouse }: { mouse: { x: number; y: number } }) {
 
       {/* Hero visual — floating mockup */}
       <div
-        className={`mt-20 relative w-full max-w-3xl mx-auto transition-all duration-1000 delay-300 ${heroReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
+        className={`mt-20 relative w-full max-w-5xl mx-auto transition-all duration-1000 delay-300 ${heroReveal.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}
       >
         <div className="animate-float">
-          <ImagePlaceholder src="/new_stress_pic.png" label="Dashboard Preview" className="w-full h-72 md:h-96" />
+          <ImagePlaceholder 
+            src="/new_stress_pic.png" 
+            label="Dashboard Preview" 
+            className="w-full h-80 md:h-[500px]" 
+            priority={true}
+            quality={100}
+          />
         </div>
         <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-3/4 h-20 bg-[#B21563]/20 rounded-full blur-2xl pointer-events-none" />
       </div>
