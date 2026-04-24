@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { app } from "@/lib/firebase";
 
 /* ─────────────────────────────────────────────
    Hook: intersection observer for scroll-reveal
@@ -165,6 +167,37 @@ export default function Home() {
   const statsReveal = useReveal(0.2);
   const missionReveal = useReveal(0.2);
   const ctaReveal = useReveal(0.2);
+
+  // ── Auto-login check ──
+  useEffect(() => {
+    const auth = getAuth(app);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const res = await fetch("/api/auth/me", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ uid: user.uid }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.user && data.user.isProfileComplete) {
+              // Priority: Stealth mode (Notepad) if they have a secret key
+              if (data.user.secretKey) {
+                router.push("/notepad");
+              } else {
+                router.push("/dashboard");
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Auto-redirect failed:", error);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   return (
     <main className="min-h-screen bg-white text-zinc-900 font-sans overflow-x-hidden">
