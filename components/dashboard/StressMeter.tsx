@@ -611,7 +611,7 @@ const StressMeter = ({ uid }: StressMeterProps) => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* 7-day avg */}
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm flex items-center justify-center">
-          <div className="flex items-end gap-x-6">
+          <div className="flex items-center gap-x-6">
             <div className="flex-none">
               <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1">
                 7-Day Avg Stress
