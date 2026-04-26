@@ -351,7 +351,7 @@ function ModernDayBar({ day, maxWellbeing, isSelected, isToday, onClick, index }
           style={{
             height: animate ? (hasData ? `${Math.max(barHeightPct, 8)}%` : "4%") : "0%",
             backgroundColor: hasData ? barColor : "transparent",
-            ringColor: barColor,
+            
           }}
         >
           {hasData && <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: "linear-gradient(135deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%)" }} />}
